@@ -4,13 +4,21 @@
 function(input, output) {
     # This is wrapped inside of reactive func to make it respond to user selection. 
     filterData <- reactive({
-        # This takes input from Categorical Param Selector for group_by func
-        groupedInput <- df %>%
-            group_by_at(vars(input$catParam)) %>%
-            summarise_all(median)
-        # GI <- groupedInput[,paramNames == input$Parameters] 
-        GI <- select(groupedInput, input$Parameters) # This is much easier to implement without having to remove unwanted columns from above code ex
-        return(GI)
+        if (input$catParam == "None"){
+            df2 <- df
+            
+            return(df2)
+        }else{
+            # This takes input from Categorical Param Selector for group_by func
+            groupedInput <- df %>%
+                group_by_at(vars(input$catParam)) %>%
+                summarise_all(median)
+            
+            # GI <- groupedInput[,paramNames == input$Parameters] 
+            GI <- select(groupedInput, input$Parameters) # This is much easier to implement without having to remove unwanted columns from above code ex
+            return(GI)
+        }
+             
     })
     # This is wrapped inside of reactive func to make it respond to user selection. 
     filterData2 <- reactive({
@@ -47,14 +55,33 @@ function(input, output) {
     })
     # the eventReactive will respond to the Refresh buttons in UI
     heatmap1 <- eventReactive(input$refreshPlot, {
-        # Finally make a heatmap. assign this to an object or use later (not required). 
-        pheatmap::pheatmap(filterData(), color = inferno(256))
-        
-        # TODO add more functionality with grouByCluster option.
+        if(input$catParam == "None"){
+            pheatmap::pheatmap(filterData(),color = inferno(n=512, begin = 0, end = 0.9),
+                                     border_color = "grey20",
+                                     main = "",
+                                     show_rownames = FALSE,
+                                     show_colnames = TRUE,
+                                     fontsize_col = 8,
+                                     angle_col = "45",
+                                     fontsize_row = 8,
+                                     kmeans_k = 50)
+        }else{
+            # Finally make a heatmap. assign this to an object or use later (not required).
+            pheatmap::pheatmap(filterData(), color = inferno(256),
+                               border_color = "grey20",
+                               main = "",
+                               show_rownames = TRUE,
+                               show_colnames = TRUE,
+                               fontsize_col = 8,
+                               angle_col = "45",
+                               fontsize_row = 8)
+        }
     })
+    
     output$heatmaps <- renderPlot(heatmap1())
     
     output$table1 <- renderDataTable(datatable(filterData()))
+    
     # Raincloud Plots!  
     violinPlots <- eventReactive(input$refreshPlot, {
         ggplot(filterData2(),aes(x=Gene,y=Log2Expression, fill = Gene))+
