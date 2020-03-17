@@ -3,6 +3,7 @@
 ##################################################
 function(input, output) {
     # This is wrapped inside of reactive func to make it respond to user selection. 
+    # This will return the df for heatmaps
     filterData <- reactive({
         if (input$catParam == "None"){
             df2 <- select(df, input$Parameters)
@@ -19,6 +20,7 @@ function(input, output) {
              
     })
     # This is wrapped inside of reactive func to make it respond to user selection. 
+    # This will return the df used for Violin Plots
     filterData2 <- reactive({
         if (input$catParam == "None") {
             dfnoCat <- df
@@ -36,7 +38,7 @@ function(input, output) {
             VBPnoCat <- violinPlotDF[violinPlotDF$Gene == input$Parameters, ]
             return(VBPnoCat)
         }else{
-            # Lets take the FlowMeans column and move it to the front of the DF before running gather()
+            # Lets take the catParam column and move it to the front of the DF before running gather()
             dfCat2 <- df %>% select(input$catParam, everything())
             # Use gather function to quickly create the data frame. 
             violinPlotDF <- gather(dfCat2, key = "Gene", value = "Log2Expression", 2:ncol(dfCat2))
@@ -99,11 +101,168 @@ function(input, output) {
     
     # Raincloud Plots!  
     violinPlots <- eventReactive(input$refreshPlot, {
-        ggplot(filterData2(),aes(x=Gene,y=Log2Expression, fill = Gene))+
-            geom_flat_violin(position = position_nudge(x = .15, y = 0),adjust =2) +
-            geom_point(alpha=0.05,position = position_jitter(width = .05, height=3), size = .25) +
-            ylab('Score')+xlab('Group')+coord_flip()+theme_cowplot()+guides(fill = FALSE) +
-            ggtitle('Figure 3: The Basic Raincloud with Colour')
+        
+        numUniqueParams <- length(unique(input$Parameters))
+        getPalette <- colorRampPalette(brewer.pal(8, "Dark2"))(numUniqueParams)
+        scaleShade <- scale_colour_manual(values = getPalette)
+        scaleFill <-  scale_fill_manual(values = getPalette)
+        ylabel <-	ylab('Log2Expression')
+        xlabel <-  xlab('xLabel')
+        
+        #######################
+        ## Make it Rain:     ##
+        #######################
+        makeItRain <- function(p) {
+            if(parViolin && parJitter && parBox){
+                print("All the graphix!")
+                p <- p + violinPart + jitterPart + boxPart +
+                    scaleShade + scaleFill + xlabel + ylabel + guide
+            }else if(parViolin && parBox && !parJitter){
+                print("Weather calls for boxy clouds")
+                p <- p + violinPart + boxPart +
+                    scaleShade + scaleFill + guide + xlabel + ylabel
+            }else if(parViolin && parJitter && !parBox){
+                print("Jittery Violins - aka Staccato")
+                p <- p + violinPart + jitterPart +
+                    scaleShade + scaleFill + guide + xlabel + ylabel
+            }else if(parViolin && !parBox && !parJitter){
+                print("Violin Solo")
+                p <- p + violinSoloPart +
+                    scaleShade + scaleFill + guide + xlabel + ylabel
+            }else if(parJitter && parBox && !parViolin) {
+                print("Box and Whisker with a bit of Jitter")
+                p <- p + jitterPart + boxPart +
+                    scaleShade + scaleFill + guide + xlabel + ylabel
+            }else if(parJitter && !parViolin && !parBox){
+                print("Jitter Only?! Go Home.")
+                p <- p + jitterPart +
+                    scaleShade + scaleFill + guide + xlabel + ylabel
+            }else if(parBox && !parJitter && !parViolin){
+                print("Box and Whisker Only")
+                p <- p + boxPart +
+                    scaleShade + scaleFill + guide + xlabel + ylabel
+            }else{
+                print("NO GRAPH OPTIONS SELECTED")
+                p <- p +
+                    scaleShade + scaleFill + guide + xlabel + ylabel
+            }
+            return (p)
+        }
+        
+        ###############################################
+        # Setting Default Variables for 'Nicer' Plots #
+        ###############################################
+        rainGap <- 0.1
+        rainDropSize <- 2.5
+        jitterWidth <- 0.05
+        jitterHeight <-1.2
+        boxWidth <- 0.2
+        boxNudgeX <- -0.12
+        boxNudgeY <- 0
+        boxDodgeW <- 0.2
+        violinWidth <- 1.2
+        rainGap <- 0.15
+        
+        parJitter <- TRUE
+        parBox <- TRUE
+        parViolin <- TRUE
+        parDarkTheme <- TRUE
+        groupByClust <- FALSE
+        parFlipGraph <- TRUE
+        
+        if(parDarkTheme){
+            jColor <- "WHITE"
+            fColor <- "BLACK"
+        } else {
+            jColor <- "BLACK"
+            fColor <- "WHITE"
+        }
+        
+        if (parFlipGraph) {
+            theme01 <- theme(axis.text.x = element_text(angle = 0, vjust = 0.5, size = 15, colour = jColor),
+                             axis.text.y = element_text(size = 15, colour = jColor),
+                             strip.text = element_text(size = 20),
+                             legend.text = element_text(size = 15, colour = jColor),
+                             legend.key = element_rect(fill = fColor, colour = NULL))
+        }else{
+            theme01 <- theme(axis.text.x = element_text(angle = 90, vjust = 0.5, size = 15, colour = jColor),
+                             axis.text.y = element_text(size = 15, colour = jColor),
+                             strip.text = element_text(size = 20),
+                             legend.text = element_text(size = 15, colour = jColor),
+                             legend.key = element_rect(fill = fColor, colour = NULL))
+        }
+        
+        p <- ggplot(filterData2(),aes(x=Gene,y=Log2Expression, fill = Gene, colour = Gene))
+        violinSoloPart <- geom_violin(position = position_nudge(x = .1, y = 0),
+                                      adjust = 2.5,
+                                      trim = FALSE,
+                                      width = 1.2)
+        
+        violinPart <- geom_flat_violin(position = position_nudge(x = rainGap, y = 0),
+                                       adjust = 2.5,
+                                       trim = FALSE,
+                                       width = violinWidth)
+        
+        if (parJitter && parBox && !parViolin) {
+            jitterPart <- geom_jitter(aes(x = Gene,y = Log2Expression),
+                                      position = position_jitter(width = jitterWidth),
+                                      alpha = 0.1,
+                                      colour = jColor)
+            
+        }else{
+            jitterPart <- geom_point(alpha = .10,
+                                     position = position_jitter(width = jitterWidth,
+                                                                height = jitterHeight),
+                                     size = rainDropSize)
+        }
+        
+        if (parJitter && parBox && !parViolin) {
+            boxPart <- geom_boxplot(aes(x = Gene,
+                                        y = Log2Expression),
+                                    outlier.colour = NA,
+                                    width = boxWidth,
+                                    position = position_dodge(preserve = "total",width = boxDodgeW),
+                                    colour = jColor)
+            
+        }else{
+            boxPart <- geom_boxplot(aes(x = Gene,
+                                        y = Log2Expression),
+                                    position = position_nudge(x = boxNudgeX,y = boxNudgeY),
+                                    outlier.shape = NA,
+                                    alpha = 0.3,
+                                    width = boxWidth,
+                                    colour = jColor)
+        }
+        
+        xLabel <- "Parameters"
+        
+        if (groupByClust) {
+            xLabel <- paste0(catPar, " Clusters")
+            theme01 <- theme02
+        }
+        
+        # misc:
+        ylabel <-	ylab('Log2Expression')
+        xlabel <-  xlab(xLabel)
+        theme <- theme_cowplot()
+        guide <- guides(fill = FALSE, colour = FALSE)
+        p <- makeItRain(p)
+        p <- p + theme + theme01
+        
+        if (parFlipGraph) {
+            p <- p + coord_flip()
+        }
+        
+        if (parDarkTheme) {
+            p <- p + theme_dark() + theme(axis.text.x = element_text(size = 15, colour = jColor),
+                                          axis.text.y = element_text(size = 15, colour = jColor),
+                                          strip.text = element_text(size = 20),
+                                          plot.background = element_rect(fill = fColor),
+                                          legend.background = element_rect(fill = fColor),
+                                          panel.background = element_rect(fill = fColor),
+                                          legend.key = element_rect(fill = fColor, colour = NULL))
+        }
+        return(p)
     })
     output$violins <- renderPlot(violinPlots())
     

@@ -11,6 +11,7 @@ library(viridisLite)
 library(DT)
 library(ggplot2)
 library(cowplot)
+library(RColorBrewer)
 
 # Choose from the two available csv files in extData folder
 inCSVPath <- file.choose()  # "/Users/10273835/Documents/code/exTidyData/B1.smallPop.catPar.ExtNode.csv"
@@ -129,45 +130,8 @@ robustLog2 <- function(x) {
     0
   }
 }
-#######################
-## Make it Rain:     ##
-#######################
-makeItRain <- function(p) {
-  if(parViolin && parJitter && parBox){
-    print("All the graphix!")
-    p <- p + violinPart + jitterPart + boxPart +
-      scaleShade + scaleFill + xlabel + ylabel + guide
-  }else if(parViolin && parBox && !parJitter){
-    print("Weather calls for boxy clouds")
-    p <- p + violinPart + boxPart +
-      scaleShade + scaleFill + guide + xlabel + ylabel
-  }else if(parViolin && parJitter && !parBox){
-    print("Jittery Violins - aka Staccato")
-    p <- p + violinPart + jitterPart +
-      scaleShade + scaleFill + guide + xlabel + ylabel
-  }else if(parViolin && !parBox && !parJitter){
-    print("Violin Solo")
-    p <- p + violinSoloPart +
-      scaleShade + scaleFill + guide + xlabel + ylabel
-  }else if(parJitter && parBox && !parViolin) {
-    print("Box and Whisker with a bit of Jitter")
-    p <- p + jitterPart + boxPart +
-      scaleShade + scaleFill + guide + xlabel + ylabel
-  }else if(parJitter && !parViolin && !parBox){
-    print("Jitter Only?! Go Home.")
-    p <- p + jitterPart +
-      scaleShade + scaleFill + guide + xlabel + ylabel
-  }else if(parBox && !parJitter && !parViolin){
-    print("Box and Whisker Only")
-    p <- p + boxPart +
-      scaleShade + scaleFill + guide + xlabel + ylabel
-  }else{
-    print("NO GRAPH OPTIONS SELECTED")
-    p <- p +
-      scaleShade + scaleFill + guide + xlabel + ylabel
-  }
-  return (p)
-}
+
+
 
 
 
