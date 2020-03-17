@@ -11,7 +11,7 @@ fluidPage(
         sidebarPanel(
             selectInput("Parameters",
                         label = "Select Parameters to Heatmap",
-                        choices = paramNames,
+                        choices = as.character(paramNames),
                         multiple = TRUE,
                         selectize = TRUE),
             selectInput("catParam",
