@@ -2,6 +2,19 @@
 # Define server logic required to draw a heatmap #
 ##################################################
 function(input, output) {
+    # TODO add booleans from checkboxgroup to feed into violin plots
+    # rv <- reactiveValues(a=FALSE, b=FALSE) 
+    # 
+    # observe( {
+    #     is.a <- 'parDarkTheme' %in% input$checkGroup 
+    #     if (  rv$a != is.a){
+    #         rv$a <- is.a
+    #     } 
+    #     is.b <- 'parFlipGraph' %in% input$checkGroup 
+    #     if (  rv$b != is.b){
+    #         rv$b <- is.b
+    #     }  
+    # }) 
     # This is wrapped inside of reactive func to make it respond to user selection. 
     # This will return the df for heatmaps
     filterData <- reactive({
@@ -23,6 +36,7 @@ function(input, output) {
     # This will return the df used for Violin Plots
     filterData2 <- reactive({
         if (input$catParam == "None") {
+            
             dfnoCat <- df
             # Use gather function to quickly create the data frame.
             violinPlotDF <- gather(dfnoCat, key = "Gene", value = "Log2Expression", 1:ncol(dfnoCat))
@@ -99,6 +113,8 @@ function(input, output) {
     
     output$table1 <- renderDataTable(datatable(filterData()))
     
+    output$table2 <- renderDataTable(datatable(filterData()))
+    
     # Raincloud Plots!  
     violinPlots <- eventReactive(input$refreshPlot, {
         
@@ -162,13 +178,13 @@ function(input, output) {
         boxDodgeW <- 0.2
         violinWidth <- 1.2
         rainGap <- 0.15
-        
+        # TODO make these below into boolean flags/buttons/checkbox for user
         parJitter <- TRUE
         parBox <- TRUE
         parViolin <- TRUE
-        parDarkTheme <- TRUE
+        # parDarkTheme <- TRUE
         groupByClust <- FALSE
-        parFlipGraph <- TRUE
+        # parFlipGraph <- FALSE
         
         if(parDarkTheme){
             jColor <- "WHITE"
