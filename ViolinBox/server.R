@@ -3,18 +3,25 @@
 ##################################################
 function(input, output) {
     # TODO add booleans from checkboxgroup to feed into violin plots
-    # rv <- reactiveValues(a=FALSE, b=FALSE) 
+    # rv <- reactiveValues(a=FALSE, b=FALSE)
     # 
     # observe( {
-    #     is.a <- 'parDarkTheme' %in% input$checkGroup 
+    #     is.a <- 'parDarkTheme' %in% input$violinCheckGroup
     #     if (  rv$a != is.a){
     #         rv$a <- is.a
-    #     } 
-    #     is.b <- 'parFlipGraph' %in% input$checkGroup 
+    #     }
+    #     is.b <- 'parFlipGraph' %in% input$violinCheckGroup
     #     if (  rv$b != is.b){
     #         rv$b <- is.b
-    #     }  
-    # }) 
+    #     }
+    # })
+    # 
+    # observeEvent(rv$a, {
+    #     print("a only")
+    # })
+    # observeEvent(input$a, {
+    #     print("I'm here (a only)")
+    # })
     # This is wrapped inside of reactive func to make it respond to user selection. 
     # This will return the df for heatmaps
     filterData <- reactive({
@@ -115,9 +122,53 @@ function(input, output) {
     
     output$table2 <- renderDataTable(datatable(filterData()))
     
+    # output$parFlipGraph <- as.logical(verbatimTextOutput(input$flipViolins))
+
+    # parJitter <- TRUE
+    # parBox <- TRUE
+    # parViolin <- TRUE
+    # parDarkTheme <- TRUE
+    # groupByClust <- FALSE
+    
     # Raincloud Plots!  
     violinPlots <- eventReactive(input$refreshPlot, {
+        # Set the plot options
+        if(input$flipViolins == TRUE){
+            parFlipGraph <- TRUE
+        }else{
+            parFlipGraph <- FALSE
+        }
         
+        if(input$darkTheme == TRUE){
+            parDarkTheme <- TRUE
+        }else{
+            parDarkTheme <- FALSE
+        }
+        
+        if(input$jitter == TRUE){
+            parJitter <- TRUE
+        }else{
+            parJitter <- FALSE
+        }
+        
+        if(input$violins == TRUE){
+            parViolin <- TRUE
+        }else{
+            parViolin <- FALSE
+        }
+        
+        if(input$boxes == TRUE){
+            parBox <- TRUE
+        }else{
+            parBox <- FALSE
+        }
+        
+        # if(input$grpClust == TRUE){
+        #     groupByClust <- TRUE
+        # }else{
+        #     groupByClust <- FALSE
+        # }
+        # parDarkTheme <- verbatimTextOutput(input$flipViolins)
         numUniqueParams <- length(unique(input$Parameters))
         getPalette <- colorRampPalette(brewer.pal(8, "Dark2"))(numUniqueParams)
         scaleShade <- scale_colour_manual(values = getPalette)
@@ -179,12 +230,7 @@ function(input, output) {
         violinWidth <- 1.2
         rainGap <- 0.15
         # TODO make these below into boolean flags/buttons/checkbox for user
-        parJitter <- TRUE
-        parBox <- TRUE
-        parViolin <- TRUE
-        # parDarkTheme <- TRUE
-        groupByClust <- FALSE
-        # parFlipGraph <- FALSE
+
         
         if(parDarkTheme){
             jColor <- "WHITE"
@@ -193,7 +239,15 @@ function(input, output) {
             jColor <- "BLACK"
             fColor <- "WHITE"
         }
-        
+        # if (groupByClust) {
+        #     xLabel <- paste0(input$catParam, " Clusters")
+        #     theme02 <- theme(axis.text.x = element_text(angle = 48, hjust = 1.1, vjust = 1, size = 15, colour = jColor),
+        #                      axis.text.y = element_text(size = 15, colour = jColor),
+        #                      strip.text = element_text(size = 20),
+        #                      legend.text = element_text(size = 15, colour = jColor),
+        #                      legend.key = element_rect(fill = fColor, colour = NULL))
+        # }
+        # 
         if (parFlipGraph) {
             theme01 <- theme(axis.text.x = element_text(angle = 0, vjust = 0.5, size = 15, colour = jColor),
                              axis.text.y = element_text(size = 15, colour = jColor),
@@ -252,11 +306,18 @@ function(input, output) {
         
         xLabel <- "Parameters"
         
-        if (groupByClust) {
-            xLabel <- paste0(catPar, " Clusters")
-            theme01 <- theme02
-        }
-        
+        # if (groupByClust) {
+        #     xLabel <- paste0(input$catParam, " Clusters")
+        #     theme01 <- theme02
+        # }else{print("groupByClusty")}
+        # 
+        # if (groupByClust) {
+        #     # violinPlotDF.saveGame <- violinPlotDF
+        #     # colnames(input$Parameters) <- c("Gene", input$catParam, "Log2Expression")
+        #     ttle <- "Parameter"
+        #     theme01 <- theme02
+        # }else{print("take up some space")}
+        # 
         # misc:
         ylabel <-	ylab('Log2Expression')
         xlabel <-  xlab(xLabel)
