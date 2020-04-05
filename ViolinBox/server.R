@@ -25,16 +25,16 @@ function(input, output) {
     # This is wrapped inside of reactive func to make it respond to user selection. 
     # This will return the df for heatmaps
     filterData <- reactive({
-        if (input$catParam == "None"){
-            df2 <- select(df, input$Parameters)
-            return(df2)
+        if (input$hmCatParam == "None"){
+            HMdf <- select(df, input$hmParameters)
+            return(HMdf)
         }else{
             # This takes input from Categorical Param Selector for group_by func
             groupedInput <- df %>%
-                group_by_at(vars(input$catParam)) %>%
+                group_by_at(vars(input$hmCatParam)) %>%
                 summarise_all(median)
             # GI <- groupedInput[,paramNames == input$Parameters] 
-            GI <- select(groupedInput, input$Parameters) # This is much easier to implement without having to remove unwanted columns from above code ex
+            GI <- select(groupedInput, input$hmParameters) # This is much easier to implement without having to remove unwanted columns from above code ex
             return(GI)
         }
              
@@ -55,12 +55,14 @@ function(input, output) {
             
             violinPlotDF$Log2Expression <- as.numeric(violinPlotDF$Log2Expression)
             violinPlotDF$Gene <- as.factor(violinPlotDF$Gene)
-            
             VBPnoCat <- violinPlotDF[violinPlotDF$Gene == input$Parameters, ]
             return(VBPnoCat)
         }else{
             # Lets take the catParam column and move it to the front of the DF before running gather()
             dfCat2 <- df %>% select(input$catParam, everything())
+            if (isSeqGeq == F) {
+                dfCat2$EventNumberDP <- NULL
+            }
             # Use gather function to quickly create the data frame. 
             violinPlotDF <- gather(dfCat2, key = "Gene", value = "Log2Expression", 2:ncol(dfCat2))
             if(ncol(violinPlotDF) < 3){
@@ -78,23 +80,55 @@ function(input, output) {
             # set up the DF for plotting
             violinPlotDF$Log2Expression <- as.numeric(violinPlotDF$Log2Expression)
             violinPlotDF$Gene <- as.factor(violinPlotDF$Gene)
-            violinPlotDF[input$catParam] <- as.factor(violinPlotDF[input$catParam])
-            # GI <- groupedInput[,paramNames == input$Parameters] 
-            # Keep the columns of interest
-            VBP <- violinPlotDF[violinPlotDF$Gene == input$Parameters, ] # This is much easier to implement without having to remove unwanted columns from above code ex
+            violinPlotDF[input$catParam] <- as.factor(gsub("\\s*", "", as.matrix(violinPlotDF[input$catParam])))
+            
+            if (input$grpByParam == TRUE) {
+                violinPlotDF.saveGame <- violinPlotDF
+                colnames(violinPlotDF) <- c("Gene", as.character(input$catParam), "Log2Expression")
+                VBP <- violinPlotDF[violinPlotDF[[input$catParam]] == input$Parameters, ]
+                # ttle <- "Parameter"
+                # theme01 <- theme02
+            }else{
+                VBP <- violinPlotDF[violinPlotDF$Gene == input$Parameters, ]
+            }
             return(VBP)
         }
         
     })
     # # Make a Categorical Parameter selector
-    categoricalParam <- reactive({
-        CP <- as.factor(paramNames[input$catParam])
-        return(CP)
-    })
+    # categoricalParam <- reactive({
+    #     # Lets take the catParam column and move it to the front of the DF before running gather()
+    #     dfCat2 <- df %>% select(input$catParam, everything())
+    #     # Use gather function to quickly create the data frame. 
+    #     violinPlotDF <- gather(dfCat2, key = "Gene", value = "Log2Expression", 2:ncol(dfCat2))
+    #     # can use sapply to apply the robustlog2 to Values
+    #     tempDF <- sapply(violinPlotDF$Log2Expression, robustLog2)
+    #     tempDF <- data.frame(matrix(unlist(tempDF), nrow=length(tempDF), byrow=T))
+    #     violinPlotDF <- cbind(violinPlotDF, tempDF)
+    #     violinPlotDF <-  violinPlotDF[,-3]
+    #     colnames(violinPlotDF)[3] <- "Log2Expression"
+    #     rm(tempDF)
+    #     CP <- violinPlotDF[input$catParam] <- as.factor(violinPlotDF[input$catParam])
+    #     
+    #     return(CP)
+    # })
     # the eventReactive will respond to the Refresh buttons in UI
-    heatmap1 <- eventReactive(input$refreshPlot, {
+    heatmap1 <- eventReactive(input$HMrefreshPlot, {
         if(input$catParam == "None"){
-            pheatmap::pheatmap(filterData(),color = inferno(n=512, begin = 0, end = 0.9),
+        #     plot_ly(filterData(),
+        #                     x=colnames(filterData()),
+        #                     y=rownames(filterData()),
+        #                     type = "heatmap",
+        #                     colorscale = "viridis") %>% 
+        #         layout(xaxis=list(
+        #                 title="HeatMap"),
+        #                yaxis=list(
+        #                 title="Something Nice",
+        #                 
+        #                )
+        #         )
+            pheatmap::pheatmap(filterData(),color = eval(parse(text = input$hmPalette))(n=length(mat_breaks)-1),
+                                     breaks = mat_breaks,
                                      border_color = "grey20",
                                      main = "",
                                      show_rownames = FALSE,
@@ -105,7 +139,7 @@ function(input, output) {
                                      kmeans_k = 30)
         }else{
             # Finally make a heatmap. assign this to an object or use later (not required).
-            pheatmap::pheatmap(filterData(), color = inferno(256, begin = 0, end = 0.9),
+            pheatmap::pheatmap(filterData(), color = eval(parse(text = input$hmPalette))(n=length(mat_breaks)-1),
                                border_color = "grey20",
                                main = "",
                                show_rownames = FALSE,
@@ -116,19 +150,12 @@ function(input, output) {
         }
     })
     
-    output$heatmaps <- renderPlot(heatmap1())
+    output$heatmaps1 <- renderPlot(heatmap1(),
+                                   width = "auto")
     
     output$table1 <- renderDataTable(datatable(filterData()))
     
-    output$table2 <- renderDataTable(datatable(filterData()))
-    
-    # output$parFlipGraph <- as.logical(verbatimTextOutput(input$flipViolins))
-
-    # parJitter <- TRUE
-    # parBox <- TRUE
-    # parViolin <- TRUE
-    # parDarkTheme <- TRUE
-    # groupByClust <- FALSE
+    # output$table2 <- renderDataTable(datatable(filterData()))
     
     # Raincloud Plots!  
     violinPlots <- eventReactive(input$refreshPlot, {
@@ -163,14 +190,22 @@ function(input, output) {
             parBox <- FALSE
         }
         
-        # if(input$grpClust == TRUE){
-        #     groupByClust <- TRUE
-        # }else{
-        #     groupByClust <- FALSE
-        # }
-        # parDarkTheme <- verbatimTextOutput(input$flipViolins)
-        numUniqueParams <- length(unique(input$Parameters))
-        getPalette <- colorRampPalette(brewer.pal(8, "Dark2"))(numUniqueParams)
+        if(input$overlay == TRUE){
+            parOverlayPlots <- TRUE
+        }else{
+            parOverlayPlots <- FALSE
+        }
+        
+        if (input$grpByParam == TRUE){
+            numUniqueParams <- length(unique(filterData2()[,1]))
+        } else{
+            numUniqueParams <- length(unique(filterData2()[,2]))
+        }
+        ## This color palette generator requires a minimum of 4 parameters, so:
+        if (numUniqueParams < 6) {
+            numUniqueParams <- 6
+        }
+        getPalette <- colorRampPalette(brewer.pal(8, input$vbPalette))(numUniqueParams)
         scaleShade <- scale_colour_manual(values = getPalette)
         scaleFill <-  scale_fill_manual(values = getPalette)
         ylabel <-	ylab('Log2Expression')
@@ -262,7 +297,7 @@ function(input, output) {
                              legend.key = element_rect(fill = fColor, colour = NULL))
         }
         
-        p <- ggplot(filterData2(),aes(x=Gene,y=Log2Expression, fill = Gene, colour = Gene))
+        p <- ggplot(filterData2(),aes(x=Gene,y=Log2Expression, fill = Gene, colour = Gene), text)
         violinSoloPart <- geom_violin(position = position_nudge(x = .1, y = 0),
                                       adjust = 2.5,
                                       trim = FALSE,
@@ -303,21 +338,12 @@ function(input, output) {
                                     width = boxWidth,
                                     colour = jColor)
         }
-        
-        xLabel <- "Parameters"
-        
-        # if (groupByClust) {
-        #     xLabel <- paste0(input$catParam, " Clusters")
-        #     theme01 <- theme02
-        # }else{print("groupByClusty")}
-        # 
-        # if (groupByClust) {
-        #     # violinPlotDF.saveGame <- violinPlotDF
-        #     # colnames(input$Parameters) <- c("Gene", input$catParam, "Log2Expression")
-        #     ttle <- "Parameter"
-        #     theme01 <- theme02
-        # }else{print("take up some space")}
-        # 
+        if(input$grpByParam){
+            xLabel = "Clusters"
+        } else {
+            xLabel <- "Parameters"
+        }
+ 
         # misc:
         ylabel <-	ylab('Log2Expression')
         xlabel <-  xlab(xLabel)
@@ -325,6 +351,10 @@ function(input, output) {
         guide <- guides(fill = FALSE, colour = FALSE)
         p <- makeItRain(p)
         p <- p + theme + theme01
+        
+        if(parOverlayPlots){
+              p <- p + facet_wrap(.data[[facetParam]])
+            }
         
         if (parFlipGraph) {
             p <- p + coord_flip()
