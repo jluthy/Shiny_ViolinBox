@@ -61,7 +61,9 @@ dashboardPage(skin = "blue",
         sidebarMenu(
             menuItem(text = "Data", tabName = "data", icon = icon("table")),
             menuItem(text = "Heatmaps", tabName = "heatmaps", icon = icon("th")),
-            menuItem(text = "Raincloud Plots", tabName = "violins", icon = icon("soundcloud"))
+            menuItem(text = "Raincloud Plots", tabName = "violins", icon = icon("soundcloud")),
+            menuItem(text = "Beeswarm Plots", tabName = "Beeswarms", icon = icon("bug")),
+            menuItem(text = "FlowSOM Clustering", tabName = "flowsom", icon = icon("sitemap"))
             )
             
         ),
@@ -80,6 +82,8 @@ dashboardBody(
         $("#heatmaps1").height(boxHeight - 20);
         $("#violins").height(boxHeight);
         $("#violins").height(boxHeight - 20);
+        $("#Beeswarms").height(boxHeight);
+        $("#Beeswarms").height(boxHeight - 20);
       };
 
       // Set input$box_height when the connection is established
@@ -98,24 +102,25 @@ dashboardBody(
     tabItems(
         tabItem(tabName = "data",
             fluidRow(
+              box(title = "Select Data To Display",
+                  width = 4,
+                  status = "warning",
+                  collapsible = T,
+                  background = "light-blue",
+                  selectInput("DTParameters",
+                              label = "Select Parameters to Plot",
+                              choices = as.character(paramNames),
+                              multiple = TRUE,
+                              selectize = TRUE)
+              ),
                 box(title ="Data Table",
                     width = 12,
                     status = "primary", solidHeader = T,
                     DTOutput("table1")
-                ),
-                box(title = "Select Data To Display",
-                    width = 4,
-                    status = "warning",
-                    collapsible = T,
-                    background = "light-blue",
-                    selectInput("DTParameters",
-                                label = "Select Parameters to Plot",
-                                choices = as.character(paramNames),
-                                multiple = TRUE,
-                                selectize = TRUE)
                 )
+
             )
-        ), 
+        ),
         ##################################################
         # Define UI Layout for HEATMAP Tab             #
         ##################################################
@@ -147,7 +152,17 @@ dashboardBody(
                                     label = "Select a color palette for heatmap",
                                     choices = hmPalette,
                                     multiple = FALSE,
-                                    selectize = TRUE)
+                                    selectize = TRUE),
+                        materialSwitch("scaleHM",
+                                      label = "Normalize to Mode",
+                                      right = TRUE,
+                                      status = "warning",
+                                      TRUE),
+                        materialSwitch("dendrogram",
+                                      label = "Add Dendrograms",
+                                      right = TRUE,
+                                      status = "warning",
+                                      TRUE)
                         ),
                     box(title = "Select a Categorical Parameter",
                         width = 4,
@@ -173,7 +188,6 @@ dashboardBody(
             fluidRow(
                 box(title = "Make it Rain!",
                     width = 12,
-                    height = "85%",
                     status = "primary", solidHeader = T,
                     plotOutput("violins")
                 ),
@@ -225,16 +239,11 @@ dashboardBody(
                                 right = TRUE,
                                 status = "warning",
                                 FALSE),
-                    materialSwitch("grpByParam",
-                                label = "Group By Parameter",
-                                right = TRUE,
-                                status = "warning",
-                                TRUE),
-                    materialSwitch("overlay",
-                                label = "Overlay Plots",
-                                right = TRUE,
-                                status = "warning",
-                                FALSE)
+                    materialSwitch("addLegend",
+                                  label = "Show Legend",
+                                  right = TRUE,
+                                  status = "warning",
+                                  TRUE)
                     ),
                 box(title = "Select a Categorical Parameter",
                     width = 4,
@@ -246,13 +255,117 @@ dashboardBody(
                                 label = "Select a Categorical Parameter",
                                 choices = c("None", as.character(paramNames)),
                                 selected = NULL),
+                    materialSwitch("grpByParam",
+                                   label = "Group By Parameter",
+                                   right = TRUE,
+                                   status = "warning",
+                                   TRUE),
+                    materialSwitch("statCompare",
+                                   label = "Statistical Comparison",
+                                   right = TRUE,
+                                   status = "warning",
+                                   FALSE),
+                    materialSwitch("overlay",
+                                   label = "Overlay Plots",
+                                   right = TRUE,
+                                   status = "warning",
+                                   FALSE),
                     actionBttn("refreshPlot",
                                label = "Refresh Plot",
                                style = "material-flat",
                                color = "success",
                                icon = icon("soundcloud"))
                 )
-        ))
+            )
+        ),
+        ##################################################
+        # Define UI Layout for BeeSwarm Tab              #
+        ##################################################
+        tabItem(tabName = "Beeswarms",
+                fluidRow(
+                  box(title = "Beeswarm Plots",
+                      width = 12,
+                      status = "primary", solidHeader = T,
+                      plotOutput("beeswarmPlot")
+                  ),
+                  box(title = "Choose Parameters to Plot",
+                      width = 6,
+                      height = "15%",
+                      status = "warning",
+                      collapsible = T,
+                      background = "light-blue",
+                      selectizeInput("bsParameters",
+                                  label = "Select Parameters to Plot",
+                                  choices = paramNames,
+                                  selected = NULL,
+                                  multiple = TRUE)
+                  ),
+                  box(title = "Select a Categorical Parameter",
+                      width = 6,
+                      height = "15%",
+                      collapsible = T,
+                      status = "warning",
+                      background = "light-blue",
+                      selectizeInput("bscatParam",
+                                  label = "Select a Categorical Parameter",
+                                  choices = c("None", as.character(paramNames)),
+                                  selected = NULL,
+                                  multiple = FALSE),
+                      actionBttn("BSrefreshPlot",
+                                 label = "Refresh Plot",
+                                 style = "material-flat",
+                                 color = "success",
+                                 icon = icon("sliders"))
+                )
+                
+                )
+        ),
+        ##################################################
+        # Define UI Layout for FlowSOM Tab              #
+        ##################################################
+        tabItem(tabName = "flowsom",
+                fluidRow(
+                  box(title = "Select Parameters in Cluster",
+                      width = 4,
+                      collapsible = T,
+                      status = "warning",
+                      background = "light-blue",
+                      selectizeInput("flowsomParams",
+                                     label = "Cluster on These Please",
+                                     choices = fsomParams,
+                                     selected = NULL,
+                                     multiple = TRUE),
+                      actionBttn("FSrefreshPlot",
+                                 label = "Refresh Plot",
+                                 style = "material-flat",
+                                 color = "success",
+                                 icon = icon("sitemap"))
+                  ),
+                  box(title = "Customize the Map",
+                      width = 4,
+                      collapsible = T,
+                      status = "warning",
+                      background = "light-blue",
+                      selectizeInput("somPalette",
+                                     label = "Select a color palette",
+                                     choices = somPalette,
+                                     selected = "reds",
+                                     multiple = FALSE),
+                      sliderInput("seedSlider",
+                                  label = "Set Seed",
+                                  value = 123,
+                                  min = 3,
+                                  max = 262421,
+                                  step = 1)
+                    
+                  ),
+                  box(title = "FlowSOM",
+                      width = 12,
+                      status = "primary", solidHeader = T,
+                      plotOutput("flowsomPlot")
+                      ),
+                  
+                )
     )
         # tabItems(
         #   tabItem(tabName = "data",
@@ -267,7 +380,7 @@ dashboardBody(
         # )
     )
 )
-
+)
 
 
 
