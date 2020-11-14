@@ -22,14 +22,26 @@ function(input, output, session) {
   filterData <- reactive({
     if (input$hmCatParam == "None"){
       HMdf <- select(df, input$hmParameters)
+      HMdf <- round(HMdf, 2)
       return(HMdf)
     }else{
       # This takes input from Categorical Param Selector for group_by func
       groupedInput <- df %>%
-        group_by_at(vars(input$hmCatParam)) %>%
-        summarise_all(median)
-      # GI <- groupedInput[,paramNames == input$Parameters] 
-      GI <- select(groupedInput, input$hmParameters) # This is much easier to implement without having to remove unwanted columns from above code ex
+        # dplyr::filter(eval(parse(text = input$catParam)) %in% input$clusters) %>%
+        dplyr::group_by_at(vars(input$hmCatParam)) %>%
+        dplyr::summarise(across(.cols = input$hmParameters, .fns = mean))
+      
+      # This makes sure the names of populations are added to the data frame (if we have them). And that they're ordered the way one would hope (natural order)
+      groupedInput <- as.data.frame(groupedInput)
+      # namers <- groupedInput[, input$hmCatParam]
+      # 
+      # namers <- namers[order(nchar(namers), namers)]                                 ## order names that will be used as the row names momentarily
+      # groupedInput <- groupedInput[mixedorder(groupedInput[[input$hmCatParam]]), ]      ## order rows based on the categorical parameter
+      # groupedInput[input$hmCatParam] <- NULL
+      # row.names(groupedInput) <- namers
+      
+      GI <- dplyr::select(groupedInput, input$hmParameters) # This is much easier to implement without having to remove unwanted columns from above code ex
+      GI <<- as.matrix(round(GI, 2))
       return(GI)
     }
     
@@ -181,34 +193,23 @@ function(input, output, session) {
   #                        backgroundColor = hcl.colors(n=10, palette = "reds", alpha = 0.6 ))
   # })
   ######################################
-  # Create the Refresh Button HEatmap #
+  # Create the Refresh Button Heatmap #
   ######################################
   # the eventReactive will respond to the Refresh buttons in UI
   heatmap1 <- eventReactive(input$HMrefreshPlot, {
-    print("so fresh")
+    if(input$scaleHM){
+      scl = "column"
+    }else{
+      scl = "none"
+    }
+    if(input$dendrogram){
+      clusterD = T
+    }else{
+      clusterD = F
+    }
+    
     if(input$hmCatParam == "None"){
-      if(input$scaleHM){
-        scl = "column"
-      }else{
-        scl = "none"
-      }
-      if(input$dendrogram){
-        clusterD = T
-      }else{
-        clusterD = F
-      }
-      #     plot_ly(filterData(),
-      #                     x=colnames(filterData()),
-      #                     y=rownames(filterData()),
-      #                     type = "heatmap",
-      #                     colorscale = "viridis") %>% 
-      #         layout(xaxis=list(
-      #                 title="HeatMap"),
-      #                yaxis=list(
-      #                 title="Something Nice",
-      #                 
-      #                )
-      #         )
+
       pheatmap::pheatmap(filterData(),color = eval(parse(text = input$hmPalette))(n=length(mat_breaks)-1),
                          border_color = "grey20",
                          main = "",
