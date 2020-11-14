@@ -28,6 +28,9 @@ df <- read.csv(inCSVPath, sep = ",", header = TRUE, check.names = FALSE)
 # df <- ff@exprs[]
 catParRaw <- "FlowMeans.ClusterID"
 noKatPar <- TRUE
+jColor <- "BLACK"
+fColor <- "WHITE"
+lColor <- "black"
 if(catParRaw != "[]" && catParRaw != ""){
   catParam <- gsub("(\\[)","",gsub("(\\])","",catParRaw))
   catPar <- as.symbol(catParam)
@@ -58,6 +61,7 @@ quantile_breaks <- function(xs, n = 10) {
 }
 df2 <- as.matrix(df)
 mat_breaks <- quantile_breaks(df2, n = 11)
+rm(df2) #free up that mem
 
 parList <- as.list(paramNames)
 if (noKatPar){
